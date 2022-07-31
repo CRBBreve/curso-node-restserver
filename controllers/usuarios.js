@@ -1,45 +1,102 @@
-const {response, request} = require("express")
+const {response, request} = require("express");
+const bcryptjs = require("bcryptjs")
 
-const usuariosGET = (req = request, res = response) => {
+const Usuario = require("../models/usuario");
 
-    const {q, nombre = "No name", apikey, page = 1, limit} = req.query;
 
+
+
+
+
+const usuariosGET = async(req = request, res = response) => {
+
+    const {limite = 5, desde = 0} = req.query;
+    const query = {estado: true};
+
+
+    const [total, usuarios] = await Promise.all([
+      Usuario.countDocuments(query),
+      Usuario.find(query)
+      .skip(Number(desde))
+      .limit(Number(limite))
+    ]);
+    
+  
     res.json({
-        msg: "get API - CONTROLADOR",
-        q, nombre, apikey, page, limit
+     total, 
+     usuarios
     });
   }
 
 
-const usuariosPUT = (req, res = response) => {
+
+
+
+
+
+
+const usuariosPUT = async (req, res = response) => {
+
+    const {id} = req.params;
+    const {_id, password, google, correo, ...resto} = req.body;
+
+    //TODOvalidar contra BD
+    if (password) {
+      //encriptar password
+    const salt = bcryptjs.genSaltSync();
+    resto.password = bcryptjs.hashSync(password, salt);
+    }
+
+    const usuario = await Usuario.findByIdAndUpdate(id, resto);
+
+    res.json(usuario);
+
+  }
+
+
+
+
+
+
+
+const usuariosPOST = async (req, res = response) => {
+
+ 
+    const {nombre, correo, password, rol} = req.body;
+    const usuario = new Usuario({nombre, correo, password, rol});
+
+    
+    //guardar en bd
+    await usuario.save();
+
+    res.json({
+
+        usuario
+    });
+  }
+
+
+
+
+
+
+
+const usuariosDELETE = async(req, res = response) => {
 
     const {id} = req.params;
 
-    res.json({
-        msg: "put API usuariosPUT",
-        id
-    });
+    //fisicamente borrado
+    // const usuario = await Usuario.findByIdAndDelete(id);
+    const usuario = await Usuario.findByIdAndUpdate(id,{ estado: false});
+
+
+    res.json(usuario);
   }
 
 
-const usuariosPOST = (req, res = response) => {
-
-    const {nombre, edad} = req.body;
 
 
-    res.json({
-        msg: "post API usuariosPOST",
-        nombre,
-        edad
-    });
-  }
 
-
-const usuariosDELETE = (req, res = response) => {
-    res.json({
-        msg: "delete API usuariosDELETE"
-    });
-  }
 
 
 const usuariosPATCH = (req, res = response) => {
@@ -47,6 +104,14 @@ const usuariosPATCH = (req, res = response) => {
         msg: "patch API usuariosPATCH"
     });
   }
+
+
+
+
+
+
+
+
   module.exports = {
     usuariosGET,
     usuariosPUT,
